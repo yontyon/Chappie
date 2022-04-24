@@ -1,0 +1,6 @@
+Msg Node 1 {
+  string owner
+  bool ephemeral
+  string path
+  string data
+}

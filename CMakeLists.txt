@@ -16,8 +16,8 @@ string(APPEND CMAKE_EXE_LINKER_FLAGS " -pie -Wl,-z,relro,-z,now")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Storage options
-option(BUILD_ROCKSDB_STORAGE TRUE)
-
+set(BUILD_ROCKSDB_STORAGE TRUE)
+set(USE_ROCKSDB TRUE)
 # Default USE_LOG4CPP to true
 option(USE_LOG4CPP "Enable LOG4CPP" TRUE)
 set(CONCORD_LOGGER_NAME "concord.bft")
@@ -47,13 +47,11 @@ find_package(prometheus-cpp CONFIG REQUIRED)
 # find_package(Evmone REQUIRED)
 # include_directories(${EVM_INCLUDE_DIR})
 # set(EVM_LIBRARIES ${Evmone_LIBRARIES})
+set(BUILD_TESTING false)
 find_package(cryptopp REQUIRED)
-
-find_package(yaml-cpp REQUIRED)
-include_directories(${yaml-cpp_INCLUDE_DIRS})
 
 find_package(OpenSSL REQUIRED)
 
 add_subdirectory("submodules/concord-bft")
-# add_subdirectory("server")
-# add_subdirectory("cmf")
+add_subdirectory("server")
+add_subdirectory("cmf")
