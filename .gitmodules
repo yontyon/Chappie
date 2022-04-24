@@ -1,0 +1,3 @@
+[submodule "submodules/concord-bft"]
+	path = submodules/concord-bft
+	url = https://github.com/vmware/concord-bft.git
