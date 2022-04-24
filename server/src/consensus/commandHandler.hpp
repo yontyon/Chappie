@@ -31,6 +31,9 @@ namespace chappie::consensus {
                 concordUtils::SpanWrapper& parent_span) override;
             void setPerformanceManager(std::shared_ptr<concord::performance::PerformanceManager> perfManager) override;
         private:
+        template<typename T>
+        chappie::messages::ChappieReply executeChappieRequest(const T& request);
+    
         const concord::kvbc::IReader& reader_;
         concord::kvbc::IBlockAdder& block_adder_;
     };

@@ -4,3 +4,41 @@ Msg Node 1 {
   string path
   string data
 }
+
+Msg GetUpdates 2 {
+  string sender
+  uint64 from
+  uint64 to
+}
+
+Msg HeartBeat 3 {
+  string sender
+}
+
+Msg ChappieRequest 4 {
+    oneof {
+        Node 
+        GetUpdates
+        HeartBeat
+    } request
+}
+
+Msg Updates 5 {
+    list Node updates
+}
+
+Msg CreateNodeReply 6 {
+    bool succ
+    string data
+}
+
+Msg HeartBeatReply 7 {
+}
+Msg ChappieReply 8 {
+    bool succ
+    oneof {
+        CreateNodeReply
+        Updates
+        HeartBeatReply
+    } reply
+}
