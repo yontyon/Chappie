@@ -23,18 +23,29 @@ Msg ChappieRequest 4 {
     } request
 }
 
-Msg Updates 5 {
-    list Node updates
+Msg Data 5 {
+  uint64 blockid
+  uint64 timestamp
+  oneof {
+    Node
+    HeartBeat
+  } data
 }
 
-Msg CreateNodeReply 6 {
-    bool succ
+Msg Updates 6 {
+    list Data updates
+}
+
+Msg CreateNodeReply 7 {
+    uint64 blockid
     string data
 }
 
-Msg HeartBeatReply 7 {
+Msg HeartBeatReply 87 {
+  uint64 blockid
 }
-Msg ChappieReply 8 {
+
+Msg ChappieReply 9 {
     bool succ
     oneof {
         CreateNodeReply

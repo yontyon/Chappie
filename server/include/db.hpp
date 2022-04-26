@@ -14,13 +14,10 @@
 #pragma once
 #include <string>
 
-namespace chappie::db {
-    struct Consts {
-        static const CHAPPIE_CATEGORY{"chappie_cat"};
-    };
-
-    struct Keys {
-        char ephemeral_node = 0x0;
-        char consisent_node = 0x1;
-    }
+namespace chappie::db
+{
+    static const std::string CHAPPIE_CATEGORY{"chappie_cat"};
+    static const char node_key = 0x21;
+    static const char heartbeat_key = 0x22;
+    static const char timestamp_key = 0x23;
 };
