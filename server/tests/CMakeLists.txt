@@ -10,3 +10,14 @@ target_link_libraries(commandHandler_tests
         GTest::GTest
         chappie_execution
         tests_common)
+
+add_executable(configParser_test configParser_test.cpp)
+add_test(configParser_test configParser_test)
+
+target_link_libraries(configParser_test
+        stdc++fs
+        GTest::GTest
+        chappie_configuration
+        chappie_server_headers)
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources DESTINATION  ${CMAKE_CURRENT_BINARY_DIR})

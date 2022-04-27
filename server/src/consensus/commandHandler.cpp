@@ -20,11 +20,22 @@
 #include <variant>
 #include <string>
 #include <regex>
+#include <experimental/filesystem>
+#include <fstream>
+
+namespace fs = std::experimental::filesystem;
 
 using namespace chappie::messages;
 namespace chappie::consensus
 {
-    ExecutionHandler::ExecutionHandler(const concord::kvbc::IReader &reader, concord::kvbc::IBlockAdder &block_adder) : reader_{reader}, block_adder_{block_adder} {}
+    ExecutionHandler::ExecutionHandler(const concord::kvbc::IReader &reader, concord::kvbc::IBlockAdder &block_adder, const std::string &metadata_path, bool keep_old_data) : reader_{reader}, block_adder_{block_adder}, metadata_path_{metadata_path}
+    {
+        if (!keep_old_data && fs::exists(metadata_path))
+        {
+            fs::remove_all(metadata_path);
+        }
+        fs::create_directories(metadata_path);
+    }
     concord::kvbc::BlockId ExecutionHandler::addBlock(const std::vector<uint8_t> &data, std::string key, const std::optional<bftEngine::Timestamp> &timestamp)
     {
         concord::kvbc::categorization::VersionedUpdates ver_updates;
@@ -62,6 +73,14 @@ namespace chappie::consensus
             std::vector<uint8_t> data_vec;
             chappie::messages::serialize(data_vec, nodeReq);
             block_id = addBlock(data_vec, std::string{chappie::db::node_key} + nodeReq.path, timestamp);
+            fs::path path(metadata_path_ + nodeReq.path);
+            if (!fs::exists(path))
+            {
+                fs::create_directories(path.parent_path());
+            }
+            std::ofstream file(path);
+            file << std::to_string(block_id) << std::endl;
+            file.close();
         }
         catch (...)
         {
@@ -72,53 +91,14 @@ namespace chappie::consensus
     template <>
     ChappieReply ExecutionHandler::executeChappieRequest(const GetUpdates &getUpdatesReq, const std::optional<bftEngine::Timestamp> &timestamp)
     {
-        auto from = getUpdatesReq.from;
-        auto to = getUpdatesReq.to;
-        if (to < from)
-        {
-            LOG_INFO(getLogger(), "invalid parametes, to < from");
-            return ChappieReply{false, {}};
-        }
-
-        if (from < reader_.getGenesisBlockId())
-        {
-            LOG_INFO(getLogger(), "invalid parametes, request boundries are out of chain.");
-            return ChappieReply{false, {}};
-        }
         chappie::messages::Updates updates;
-        for (auto i = from; i <= to; i++)
+        if (getUpdatesReq.full_history)
         {
-            if (i > reader_.getLastBlockId())
-                break;
-            chappie::messages::Data data;
-            data.blockid = i;
-            auto block_updates = reader_.getBlockUpdates(i);
-            if (!block_updates)
-                continue;
-            const auto chapp_updates = block_updates->categoryUpdates(chappie::db::CHAPPIE_CATEGORY);
-            if (!chapp_updates)
-                continue;
-            const auto versioned = std::get<concord::kvbc::categorization::VersionedInput>(chapp_updates->get());
-            for (const auto &[k, v] : versioned.kv)
-            {
-                if (k.rfind(std::string{chappie::db::node_key}, 0) == 0)
-                {
-                    chappie::messages::Node node;
-                    chappie::messages::deserialize(std::vector<uint8_t>(v.data.begin(), v.data.end()), node);
-                    data.data = node;
-                }
-                else if (k.rfind(std::string{chappie::db::heartbeat_key}, 0) == 0)
-                {
-                    chappie::messages::HeartBeat heartbeat;
-                    chappie::messages::deserialize(std::vector<uint8_t>(v.data.begin(), v.data.end()), heartbeat);
-                    data.data = heartbeat;
-                }
-                else if (k.rfind(std::string{chappie::db::timestamp_key}, 0) == 0)
-                {
-                    data.timestamp = concordUtils::fromBigEndianBuffer<uint64_t>(v.data.c_str());
-                }
-            }
-            updates.updates.emplace_back(data);
+            updates = getFullPathUpdate(getUpdatesReq.path);
+        }
+        else
+        {
+            updates = getLatestPathData(getUpdatesReq.path);
         }
         return ChappieReply{true, updates};
     }
@@ -168,4 +148,88 @@ namespace chappie::consensus
         }
     }
     void ExecutionHandler::setPerformanceManager(std::shared_ptr<concord::performance::PerformanceManager> perfManager){};
+    Updates ExecutionHandler::getFullPathUpdate(const std::string &path)
+    {
+        chappie::messages::Updates updates;
+        for (auto i = reader_.getGenesisBlockId(); i <= reader_.getLastBlockId(); i++)
+        {
+            auto data = getDataByBlockNum(i);
+            if (!data)
+                continue;
+            if (std::holds_alternative<chappie::messages::Node>(data->data))
+            {
+                auto node = std::get<chappie::messages::Node>(data->data);
+                if (!(node.path.rfind(path, 0) == 0))
+                    continue;
+            }
+            updates.updates.emplace_back(*data);
+        }
+        return updates;
+    }
+    std::optional<chappie::messages::Data> ExecutionHandler::getDataByBlockNum(concord::kvbc::BlockId bid)
+    {
+        chappie::messages::Data data;
+        data.blockid = bid;
+        auto block_updates = reader_.getBlockUpdates(bid);
+        if (!block_updates)
+            return std::nullopt;
+        const auto chapp_updates = block_updates->categoryUpdates(chappie::db::CHAPPIE_CATEGORY);
+        if (!chapp_updates)
+            return std::nullopt;
+        const auto versioned = std::get<concord::kvbc::categorization::VersionedInput>(chapp_updates->get());
+        for (const auto &[k, v] : versioned.kv)
+        {
+            if (k.rfind(std::string{chappie::db::node_key}, 0) == 0)
+            {
+                chappie::messages::Node node;
+                chappie::messages::deserialize(std::vector<uint8_t>(v.data.begin(), v.data.end()), node);
+                data.data = node;
+            }
+            else if (k.rfind(std::string{chappie::db::heartbeat_key}, 0) == 0)
+            {
+                chappie::messages::HeartBeat heartbeat;
+                chappie::messages::deserialize(std::vector<uint8_t>(v.data.begin(), v.data.end()), heartbeat);
+                data.data = heartbeat;
+            }
+            else if (k.rfind(std::string{chappie::db::timestamp_key}, 0) == 0)
+            {
+                data.timestamp = concordUtils::fromBigEndianBuffer<uint64_t>(v.data.c_str());
+            }
+        }
+        return data;
+    }
+
+    chappie::messages::Updates ExecutionHandler::getLatestPathData(const std::string &path)
+    {
+        chappie::messages::Updates updates;
+        std::set<std::string> seen_clients;
+        for (const auto &entry : fs::recursive_directory_iterator(metadata_path_ + path))
+        {
+            if (fs::is_regular_file(entry.path()))
+            {
+                std::ifstream file(entry.path());
+                int bid;
+                file >> bid;
+                file.close();
+                auto data = getDataByBlockNum(bid);
+                if (!data)
+                    LOG_ERROR(getLogger(), "Unable to get specfic data from chain" << KVLOG(bid, path));
+                seen_clients.emplace(std::get<chappie::messages::Node>(data->data).owner);
+                updates.updates.emplace_back(*data);
+            }
+        }
+        for (const auto &client : seen_clients)
+        {
+            auto chapp_updates = reader_.getLatest(chappie::db::CHAPPIE_CATEGORY, std::string{chappie::db::heartbeat_key} + client);
+            ConcordAssert(chapp_updates != std::nullopt);
+            const auto val = std::get<concord::kvbc::categorization::VersionedValue>(*chapp_updates);
+            chappie::messages::HeartBeat heartbeat;
+            chappie::messages::deserialize(std::vector<uint8_t>(val.data.begin(), val.data.end()), heartbeat);
+            Data data;
+            data.blockid = val.block_id;
+            data.data = heartbeat;
+            updates.updates.emplace_back(data);
+        }
+        return updates;
+    }
 }

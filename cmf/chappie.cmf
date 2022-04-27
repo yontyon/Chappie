@@ -7,8 +7,8 @@ Msg Node 1 {
 
 Msg GetUpdates 2 {
   string sender
-  uint64 from
-  uint64 to
+  string path
+  bool full_history
 }
 
 Msg HeartBeat 3 {

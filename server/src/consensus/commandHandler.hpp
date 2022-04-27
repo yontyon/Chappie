@@ -26,7 +26,7 @@ namespace chappie::consensus
     class ExecutionHandler : public concord::kvbc::ICommandsHandler
     {
     public:
-        ExecutionHandler(const concord::kvbc::IReader &reader, concord::kvbc::IBlockAdder &block_adder);
+        ExecutionHandler(const concord::kvbc::IReader &reader, concord::kvbc::IBlockAdder &block_adder, const std::string &metadata_path, bool keep_old_data);
         void execute(ExecutionRequestsQueue &requestList,
                      std::optional<bftEngine::Timestamp> timestamp,
                      const std::string &batchCid,
@@ -41,6 +41,9 @@ namespace chappie::consensus
 
     private:
         concord::kvbc::BlockId addBlock(const std::vector<uint8_t> &data, std::string key, const std::optional<bftEngine::Timestamp> &timestamp);
+        chappie::messages::Updates getFullPathUpdate(const std::string &path);
+        std::optional<chappie::messages::Data> getDataByBlockNum(concord::kvbc::BlockId bid);
+        chappie::messages::Updates getLatestPathData(const std::string &path);
         logging::Logger getLogger() const
         {
             static logging::Logger logger_(logging::getLogger("chappie.consensus.commandHandler.reconfiguration"));
@@ -49,5 +52,6 @@ namespace chappie::consensus
 
         const concord::kvbc::IReader &reader_;
         concord::kvbc::IBlockAdder &block_adder_;
+        std::string metadata_path_;
     };
 };

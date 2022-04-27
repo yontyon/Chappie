@@ -1,0 +1,13 @@
+ips: [127.0.0.1, 123.23.23.23, 456.123.123.23, 12.123.32.12]
+metadata_root: /tmp/chappie
+bft_config:
+  batching_max_req_num: 100
+  cert_root_path: aaa
+  keys_file_prefix: bbb
+  replica_id: 10
+  tx_singing_key_path: ccc
+  n: 4
+  f: 1
+  client_groups:
+    1: [0, 1, 2]
+    2: [3, 4, 5]
