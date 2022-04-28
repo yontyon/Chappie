@@ -5,5 +5,11 @@ add_library(chappie_execution
             chappieReplica.cpp
             commandHandler.cpp)
 target_include_directories(chappie_execution PUBLIC .)
-target_link_libraries(chappie_execution PUBLIC kvbc corebft stdc++fs chappie_messages chappie_server_headers)
+target_link_libraries(chappie_execution PUBLIC 
+                        kvbc 
+                        corebft 
+                        stdc++fs 
+                        chappie_messages 
+                        chappie_server_headers
+                        chappie_configuration)
 

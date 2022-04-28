@@ -9,23 +9,13 @@
 // This product may include a number of subcomponents with separate copyright
 // notices and license terms. Your use of these subcomponents is subject to the
 // terms and conditions of the subcomponent's license, as noted in the LICENSE
-// file.
-
-#pragma once
 
 #include "Replica.h"
 #include "chappieConfiguration.hpp"
 #include "communication/CommDefs.hpp"
-#include "ReplicaConfig.hpp"
 #include <memory>
 
-namespace chappie::consensus
+int main(int argc, char **argv)
 {
-    class Replica
-    {
-    private:
-        bft::communication::ICommunication *create_replica_comm(chappie::configuraion::BftCommConfig &config);
-        bftEngine::ReplicaConfig &init_replica_configuration(chappie::configuraion::Config &config);
-        concord::kvbc::Replica bft_replica_;
-    };
+    return 0;
 }
